@@ -1,0 +1,54 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    # Reminders: runs at 08:00 and 18:00 BRT (UTC-3 = 11:00 and 21:00 UTC)
+    # GitHub Actions cron may delay 10–30 min — acceptable for daily reminders
+    - cron: '0 11 * * *'
+    - cron: '0 21 * * *'
+    # Ping (anti-pause): runs daily at 06:00 BRT
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run'
+        required: true
+        type: choice
+        options: [reminders, ping, all]
+
+jobs:
+  reminders:
+    name: Send WhatsApp reminders
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'reminders' || github.event.inputs.job == 'all') ||
+      github.event_name == 'schedule' && (github.event.schedule == '0 11 * * *' || github.event.schedule == '0 21 * * *')
+    steps:
+      - name: Call reminders endpoint
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/cron/reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP Status: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "::error::Reminders cron returned HTTP $RESPONSE"
+            exit 1
+          fi
+
+  ping:
+    name: Ping Supabase (anti-pause)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'ping' || github.event.inputs.job == 'all') ||
+      github.event_name == 'schedule' && github.event.schedule == '0 9 * * *'
+    steps:
+      - name: Ping Supabase via app endpoint
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/cron/ping" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP Status: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "::warning::Supabase ping returned HTTP $RESPONSE"
+          fi
