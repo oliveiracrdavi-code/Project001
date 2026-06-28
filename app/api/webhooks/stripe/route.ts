@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe/client'
+import { getStripe, getPlanFromPriceId } from '@/lib/stripe/client'
 import { createClient } from '@supabase/supabase-js'
 import type Stripe from 'stripe'
 import type { SubscriptionStatus } from '@/lib/supabase/types'
@@ -18,12 +18,22 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
   const supabase = getServiceClient()
+
+  // Idempotency guard — skip already-processed events
+  const { error: idempotencyError } = await supabase
+    .from('processed_stripe_events')
+    .insert({ event_id: event.id })
+
+  if (idempotencyError?.code === '23505') {
+    // Duplicate event — already processed
+    return NextResponse.json({ received: true, skipped: true })
+  }
 
   switch (event.type) {
     case 'customer.subscription.created':
@@ -32,11 +42,15 @@ export async function POST(request: Request) {
       const tenantId = sub.metadata.tenantId
       if (!tenantId) break
 
+      const priceId = sub.items.data[0]?.price.id ?? null
+      const plan = getPlanFromPriceId(priceId) ?? 'comecar'
+
       await supabase.from('tenants').update({
         stripe_subscription_id: sub.id,
-        stripe_price_id: sub.items.data[0]?.price.id ?? null,
+        stripe_price_id: priceId,
         subscription_status: sub.status as SubscriptionStatus,
         subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        plan,
       }).eq('id', tenantId)
       break
     }
@@ -51,6 +65,7 @@ export async function POST(request: Request) {
         stripe_subscription_id: null,
         stripe_price_id: null,
         subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        plan: 'comecar',
       }).eq('id', tenantId)
       break
     }

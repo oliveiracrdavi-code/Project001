@@ -10,6 +10,8 @@ export type SubscriptionStatus =
   | 'unpaid'
   | 'paused'
 
+export type PlanKey = 'comecar' | 'profissional' | 'inteligente' | 'enterprise'
+
 export interface Database {
   public: {
     Tables: {
@@ -21,6 +23,8 @@ export interface Database {
           timezone: string
           phone: string | null
           address: string | null
+          logo_url: string | null
+          plan: PlanKey
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           stripe_price_id: string | null
@@ -37,6 +41,8 @@ export interface Database {
           timezone?: string
           phone?: string | null
           address?: string | null
+          logo_url?: string | null
+          plan?: PlanKey
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           stripe_price_id?: string | null
@@ -53,6 +59,8 @@ export interface Database {
           timezone?: string
           phone?: string | null
           address?: string | null
+          logo_url?: string | null
+          plan?: PlanKey
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           stripe_price_id?: string | null
@@ -88,6 +96,7 @@ export interface Database {
           name: string
           phone: string
           email: string | null
+          cpf: string | null
           notes: string | null
           whatsapp_consent: boolean
           whatsapp_consent_date: string | null
@@ -103,6 +112,7 @@ export interface Database {
           name: string
           phone: string
           email?: string | null
+          cpf?: string | null
           notes?: string | null
           whatsapp_consent?: boolean
           whatsapp_consent_date?: string | null
@@ -116,6 +126,7 @@ export interface Database {
           name?: string
           phone?: string
           email?: string | null
+          cpf?: string | null
           notes?: string | null
           whatsapp_consent?: boolean
           whatsapp_consent_date?: string | null
@@ -197,6 +208,8 @@ export interface Database {
           notes: string | null
           reminder_sent: boolean
           return_reminder_sent: boolean
+          reminder_sent_at: string | null
+          return_reminder_sent_at: string | null
           created_at: string
           updated_at: string
         }
@@ -212,6 +225,8 @@ export interface Database {
           notes?: string | null
           reminder_sent?: boolean
           return_reminder_sent?: boolean
+          reminder_sent_at?: string | null
+          return_reminder_sent_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -220,6 +235,8 @@ export interface Database {
           notes?: string | null
           reminder_sent?: boolean
           return_reminder_sent?: boolean
+          reminder_sent_at?: string | null
+          return_reminder_sent_at?: string | null
           updated_at?: string
         }
       }
@@ -245,6 +262,128 @@ export interface Database {
           created_at?: string
         }
         Update: never
+      }
+      processed_stripe_events: {
+        Row: {
+          event_id: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          processed_at?: string
+        }
+        Update: never
+      }
+      business_hours: {
+        Row: {
+          id: string
+          tenant_id: string
+          day_of_week: number
+          open_time: string
+          close_time: string
+          is_closed: boolean
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          day_of_week: number
+          open_time?: string
+          close_time?: string
+          is_closed?: boolean
+        }
+        Update: {
+          open_time?: string
+          close_time?: string
+          is_closed?: boolean
+        }
+      }
+      business_breaks: {
+        Row: {
+          id: string
+          tenant_id: string
+          day_of_week: number
+          start_time: string
+          end_time: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          day_of_week: number
+          start_time: string
+          end_time: string
+        }
+        Update: {
+          start_time?: string
+          end_time?: string
+        }
+      }
+      business_closures: {
+        Row: {
+          id: string
+          tenant_id: string
+          date: string
+          reason: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          date: string
+          reason?: string | null
+        }
+        Update: {
+          reason?: string | null
+        }
+      }
+      ai_knowledge_base: {
+        Row: {
+          id: string
+          tenant_id: string
+          category: string
+          key: string
+          value: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          category?: string
+          key: string
+          value: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          value?: string
+          updated_at?: string
+        }
+      }
+      booking_pages: {
+        Row: {
+          id: string
+          tenant_id: string
+          is_active: boolean
+          custom_message: string | null
+          require_cpf: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          is_active?: boolean
+          custom_message?: string | null
+          require_cpf?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          is_active?: boolean
+          custom_message?: string | null
+          require_cpf?: boolean
+          updated_at?: string
+        }
       }
     }
     Views: Record<string, never>

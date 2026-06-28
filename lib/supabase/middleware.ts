@@ -36,7 +36,9 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/api/cron') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/privacidade') ||
-    pathname.startsWith('/termos')
+    pathname.startsWith('/termos') ||
+    pathname.startsWith('/agendar') ||
+    pathname.startsWith('/api/booking')
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()

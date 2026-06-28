@@ -1,38 +1,35 @@
 import Stripe from 'stripe'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
-})
+// Lazy singleton — avoids module-level instantiation during Next.js build
+let _stripe: Stripe | null = null
 
-export const STRIPE_PLANS = {
-  starter: {
-    name: 'Starter',
-    description: 'Ideal para salões pequenos com 1 profissional',
-    priceId: process.env.STRIPE_PRICE_STARTER_MONTHLY!,
-    features: [
-      'Até 100 agendamentos/mês',
-      '1 profissional',
-      'Lembretes via WhatsApp',
-      'Gestão de clientes',
-    ],
-  },
-  professional: {
-    name: 'Profissional',
-    description: 'Para salões em crescimento com múltiplos profissionais',
-    priceId: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY!,
-    features: [
-      'Agendamentos ilimitados',
-      'Até 5 profissionais',
-      'Lembretes via WhatsApp',
-      'Gestão de clientes e pacotes',
-      'Relatórios avançados',
-    ],
-  },
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-02-24.acacia',
+      typescript: true,
+    })
+  }
+  return _stripe
+}
+
+export const PLAN_PRICE_IDS = {
+  comecar: process.env.STRIPE_PRICE_COMECAR!,
+  profissional: process.env.STRIPE_PRICE_PROFISSIONAL!,
+  inteligente: process.env.STRIPE_PRICE_INTELIGENTE!,
+  enterprise: process.env.STRIPE_PRICE_ENTERPRISE!,
 } as const
 
+export type PlanKey = keyof typeof PLAN_PRICE_IDS
+
+export function getPlanFromPriceId(priceId: string | null | undefined): PlanKey | null {
+  if (!priceId) return null
+  const entry = Object.entries(PLAN_PRICE_IDS).find(([, id]) => id === priceId)
+  return entry ? (entry[0] as PlanKey) : null
+}
+
 export async function createStripeCustomer(email: string, name: string) {
-  return stripe.customers.create({ email, name })
+  return getStripe().customers.create({ email, name })
 }
 
 export async function createCheckoutSession({
@@ -48,7 +45,7 @@ export async function createCheckoutSession({
   successUrl: string
   cancelUrl: string
 }) {
-  return stripe.checkout.sessions.create({
+  return getStripe().checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
@@ -56,16 +53,15 @@ export async function createCheckoutSession({
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: { tenantId },
-    subscription_data: {
-      metadata: { tenantId },
-    },
+    subscription_data: { metadata: { tenantId } },
     locale: 'pt-BR',
     currency: 'brl',
+    allow_promotion_codes: true,
   })
 }
 
 export async function createPortalSession(customerId: string, returnUrl: string) {
-  return stripe.billingPortal.sessions.create({
+  return getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
   })
